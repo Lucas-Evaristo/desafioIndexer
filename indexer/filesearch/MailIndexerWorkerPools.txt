@@ -1,0 +1,79 @@
+package filesearch
+
+import (
+	"fmt"
+	"indexador/db"
+	"indexador/model"
+	"io/fs"
+	"log"
+	"path/filepath"
+	"sync"
+)
+
+type MailIndexer struct {
+	mailParser    MailParser
+	dbProcesor    db.Database
+	files         []string
+	RootDirectory string
+}
+
+func (m MailIndexer) IndexFiles() error {
+	BulkEmail := new(model.BulkEmail)
+	BulkEmail.Index = "Emails"
+
+	const numWorkers = 3
+	const numJobs = 100
+	jobs := make(chan string, numJobs)
+	results := make(chan map[string]string, numJobs)
+	var wg sync.WaitGroup
+
+	// Create worker goroutines
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			m.workerParseFiles(jobs, results)
+		}()
+	}
+
+	// Walk the directory and send files to the jobs channel
+	go func() {
+		err := filepath.WalkDir(m.RootDirectory, func(path string, info fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() {
+				jobs <- path
+			}
+			return nil
+		})
+		close(jobs)
+		if err != nil {
+			log.Println("Error al obtener archivos desde el directorio")
+		}
+	}()
+
+	// Wait for workers to finish processing and close the results channel
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Collect results from workers
+	for parsedEmail := range results {
+		BulkEmail.Emails = append(BulkEmail.Emails, parsedEmail)
+	}
+
+	fmt.Println(len(BulkEmail.Emails))
+	return nil
+}
+
+func (m MailIndexer) workerParseFiles(jobs <-chan string, results chan<- map[string]string) {
+	for f := range jobs {
+		email, err := m.mailParser.ConvertFilesToEmail(f)
+		if err != nil {
+			continue
+		}
+		results <- email
+	}
+}

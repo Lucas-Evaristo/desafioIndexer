@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Email search app</title>
+   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.15/dist/tailwind.min.css" rel="stylesheet">
+
+</head>
+<body>
+   
+   <body>
+      <div id="app" class="p-4">
+         <div class="bg-blue-500 text-white py-2 text-center mb-4">
+            <h1 class="text-2xl font-bold">Email Search</h1>
+        </div>
+          <div class="mb-4">
+              <input type="text" v-model="searchKeyword" placeholder="Enter search keyword"
+                  class="border p-2 rounded mr-2">
+              <button @click="searchEmails" class="bg-blue-500 text-white px-4 py-2 rounded">Search</button>
+          </div>
+  
+          <email-item v-for="email in emailsTemplate" :key="email['Message-ID']" :email="email"></email-item>
+      </div>
+  
+      <script src="app.js"></script>
+  </body>
+</body>
+</html>
